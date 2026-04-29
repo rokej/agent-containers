@@ -19,7 +19,7 @@ Parent epic: [ACM-32892](https://redhat.atlassian.net/browse/ACM-32892) — Impl
   jira: "ACM-33426"
   jira_url: "https://redhat.atlassian.net/browse/ACM-33426"
   status: "Done"
-  pr: ~
+  pr: "https://github.com/jnpacker/agent-containers/pull/3"
   summary: "Replace node:20-slim with ubi10/nodejs-24; dnf with passwordless sudo for agent package installs; binary-pin fzf+ripgrep; bump opencode/gh/Python; fix arch detection"
 
 ## Feature Plans
