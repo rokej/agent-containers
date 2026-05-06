@@ -27,8 +27,8 @@ Parent epic: [ACM-32892](https://redhat.atlassian.net/browse/ACM-32892) — Impl
   title: "Add Crush container image with shared Containerfile"
   jira: "ACM-33677"
   jira_url: "https://redhat.atlassian.net/browse/ACM-33677"
-  status: "In Progress"
-  pr: ~
+  status: "Done"
+  pr: "https://github.com/jnpacker/agent-containers/pull/4"
   summary: "Restructure Containerfile into multi-target build (base-tools → base-runtimes → opencode/crush); both images share Go/Python/tools layers, differing only in AI client"
 
 ## Feature Plans
