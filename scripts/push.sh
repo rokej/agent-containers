@@ -6,7 +6,12 @@ set -euo pipefail
 IMAGE_NAME="$1"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEFAULTS_FILE="${SCRIPT_DIR}/../.push-defaults"
+AC_DEFAULTS="${SCRIPT_DIR}/../../agent-swarm/.push-defaults"
+if [[ -f "$AC_DEFAULTS" ]]; then
+    DEFAULTS_FILE="$AC_DEFAULTS"
+else
+    DEFAULTS_FILE="${SCRIPT_DIR}/../.push-defaults"
+fi
 
 if [[ ! -f "$DEFAULTS_FILE" ]]; then
     echo "Error: .push-defaults not found. Run a build target first." >&2

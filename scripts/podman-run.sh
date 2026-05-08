@@ -12,7 +12,12 @@ shift 2 || true
 EXTRA_ARGS=("$@")  # any remaining args passed to opencode (e.g. --continue)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEFAULTS_FILE="${SCRIPT_DIR}/../.push-defaults"
+AC_DEFAULTS="${SCRIPT_DIR}/../../agent-swarm/.push-defaults"
+if [[ -f "$AC_DEFAULTS" ]]; then
+    DEFAULTS_FILE="$AC_DEFAULTS"
+else
+    DEFAULTS_FILE="${SCRIPT_DIR}/../.push-defaults"
+fi
 
 if [[ ! -f "$DEFAULTS_FILE" ]]; then
     echo "Error: .push-defaults not found. Run a build target first." >&2

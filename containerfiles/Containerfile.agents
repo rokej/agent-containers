@@ -6,6 +6,7 @@ ARG OPENCODE_VERSION=1.14.29
 ARG CRUSH_VERSION=0.65.3
 ARG PYTHON_VERSION=3.14.4
 ARG PYTHON_BUILD=20260414
+ARG JIRA_MCP_VERSION=0.1.0
 
 # ---- Stage 1: Base tools (shared by all agents) ----
 FROM registry.access.redhat.com/ubi10/nodejs-24 AS base-tools
@@ -108,6 +109,16 @@ RUN set -ex; \
     curl -fsSL "https://github.com/indygreg/python-build-standalone/releases/download/${PYTHON_BUILD}/cpython-${PYTHON_VERSION}+${PYTHON_BUILD}-${PY_ARCH}-unknown-linux-gnu-install_only.tar.gz" \
         | tar -xz -C /usr/local --strip-components=1; \
     python3 --version
+
+# Install Jira MCP Server from GitHub Releases
+ARG JIRA_MCP_VERSION
+RUN set -ex; \
+    curl -fsSL -o /tmp/jira_mcp_server-${JIRA_MCP_VERSION}-py3-none-any.whl \
+        "https://github.com/stolostron/jira-mcp-server/releases/download/v${JIRA_MCP_VERSION}/jira_mcp_server-${JIRA_MCP_VERSION}-py3-none-any.whl" \
+    && python3 -m ensurepip --upgrade \
+    && python3 -m pip install --no-cache-dir /tmp/jira_mcp_server-*.whl \
+    && rm -f /tmp/jira_mcp_server-*.whl \
+    && jira-mcp-server --help | head -5
 
 USER node
 

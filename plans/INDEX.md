@@ -31,6 +31,15 @@ Parent epic: [ACM-32892](https://redhat.atlassian.net/browse/ACM-32892) — Impl
   pr: "https://github.com/jnpacker/agent-containers/pull/4"
   summary: "Restructure Containerfile into multi-target build (base-tools → base-runtimes → opencode/crush); both images share Go/Python/tools layers, differing only in AI client"
 
+# ──────────────────────────────────────────────────────────
+- date: "2026-05-08"
+  title: "Restore jira-mcp-server installation in agent-containers fork"
+  jira: "ACM-33944"
+  jira_url: "https://redhat.atlassian.net/browse/ACM-33944"
+  status: "Done"
+  pr: ~
+  summary: "Restored jira-mcp-server wheel install (JIRA_MCP_VERSION=0.1.0) to Containerfile.agents, Makefile, and build.sh; fixed aggregate build prompting and update-and-rebuild NOPROMPT passthrough"
+
 ## Feature Plans
 
 | Plan | Summary | Jira | PR |

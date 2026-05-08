@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # deploy.sh — render and deploy a k8s YAML with live substitution
 # Usage: deploy.sh <yaml-file> [secret-yaml] [secret-yaml-2]
+# Set NOPROMPT=1 to skip interactive prompts and use saved defaults.
 set -euo pipefail
 
 YAML_FILE="$1"
@@ -8,15 +9,26 @@ EXTRA="${2:-}"       # optional secret yaml to apply first
 EXTRA2="${3:-}"      # optional second secret yaml to apply first
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEFAULTS_FILE="${SCRIPT_DIR}/../.push-defaults"
-
-if [[ ! -f "$DEFAULTS_FILE" ]]; then
-    echo "Error: .push-defaults not found. Run a build target first." >&2
+LOCAL_DEFAULTS="${SCRIPT_DIR}/../.push-defaults"
+AC_DEFAULTS="${SCRIPT_DIR}/../../agent-swarm/.push-defaults"
+if [[ -f "$AC_DEFAULTS" ]]; then
+    DEFAULTS_FILE="$AC_DEFAULTS"
+else
+    DEFAULTS_FILE="$LOCAL_DEFAULTS"
+fi
+if [[ ! -f "$DEFAULTS_FILE" && ! -f "$LOCAL_DEFAULTS" ]]; then
+    echo "Error: no .push-defaults found. Run a build target first." >&2
     exit 1
 fi
 
-# ── Read saved values ────────────────────────────────────────────────────────
-_get() { grep "^${1}=" "$DEFAULTS_FILE" | cut -d= -f2- || true; }
+# ── Read saved values (agent-swarm first, then local) ────────────────────────
+_get() {
+    local val=""
+    [[ -f "$DEFAULTS_FILE" ]] && val=$(grep "^${1}=" "$DEFAULTS_FILE" | cut -d= -f2- || true)
+    [[ -z "$val" && -f "$LOCAL_DEFAULTS" && "$LOCAL_DEFAULTS" != "$DEFAULTS_FILE" ]] && \
+        val=$(grep "^${1}=" "$LOCAL_DEFAULTS" | cut -d= -f2- || true)
+    echo "$val"
+}
 
 REGISTRY=$(              _get REGISTRY)
 IMAGE_TAG=$(             _get IMAGE_TAG);  IMAGE_TAG="${IMAGE_TAG:-latest}"
@@ -34,8 +46,7 @@ echo "    Registry : ${REGISTRY}"
 echo "    IMAGE_TAG: ${IMAGE_TAG}"
 
 # ── Prompt: namespace ────────────────────────────────────────────────────────
-# Skip prompts when DEPLOY_NO_PROMPT=1 (used when chaining multiple deploys)
-if [[ "${DEPLOY_NO_PROMPT:-0}" == "1" ]]; then
+if [[ "${NOPROMPT:-}" == "1" ]]; then
     NAMESPACE="${SAVED_NAMESPACE}"
     IMAGE_PULL_SECRET_FILE="${SAVED_PULL_SECRET_FILE}"
     echo "    Namespace: ${NAMESPACE:-<cluster default>}"
@@ -71,13 +82,15 @@ if [[ -n "$IMAGE_PULL_SECRET_FILE" && -f "$IMAGE_PULL_SECRET_FILE" ]]; then
     IMAGE_PULL_SECRET=$(grep -A5 '^metadata:' "$IMAGE_PULL_SECRET_FILE" | grep '^\s*name:' | head -1 | awk '{print $2}')
 fi
 
-# ── Persist updated defaults ─────────────────────────────────────────────────
+# ── Persist machine-specific defaults to local file ─────────────────────────
 {
-    grep -v '^IMAGE_PULL_SECRET_FILE=' "$DEFAULTS_FILE" \
-        | grep -v '^NAMESPACE=' || true
+    grep -v '^IMAGE_PULL_SECRET_FILE=' "$LOCAL_DEFAULTS" 2>/dev/null \
+        | grep -v '^NAMESPACE=' \
+        | grep -v '^REGISTRY=' \
+        | grep -v '^IMAGE_TAG=' || true
     [[ -n "$NAMESPACE"               ]] && echo "NAMESPACE=${NAMESPACE}"
     [[ -n "$IMAGE_PULL_SECRET_FILE"  ]] && echo "IMAGE_PULL_SECRET_FILE=${IMAGE_PULL_SECRET_FILE}"
-} > "${DEFAULTS_FILE}.tmp" && mv "${DEFAULTS_FILE}.tmp" "$DEFAULTS_FILE"
+} > "${LOCAL_DEFAULTS}.tmp" && mv "${LOCAL_DEFAULTS}.tmp" "$LOCAL_DEFAULTS"
 
 # ── Render YAML ──────────────────────────────────────────────────────────────
 render() {
