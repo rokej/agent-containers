@@ -37,7 +37,7 @@ Parent epic: [ACM-32892](https://redhat.atlassian.net/browse/ACM-32892) — Impl
   jira: "ACM-33944"
   jira_url: "https://redhat.atlassian.net/browse/ACM-33944"
   status: "Done"
-  pr: ~
+  pr: "https://github.com/stolostron/agent-containers/pull/6"
   summary: "Restored jira-mcp-server wheel install (JIRA_MCP_VERSION=0.1.0) to Containerfile.agents, Makefile, and build.sh; fixed aggregate build prompting and update-and-rebuild NOPROMPT passthrough"
 
 ## Feature Plans
