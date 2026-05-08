@@ -6,14 +6,16 @@ set -euo pipefail
 POD="$1"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEFAULTS_FILE="${SCRIPT_DIR}/../.push-defaults"
+LOCAL_DEFAULTS="${SCRIPT_DIR}/../.push-defaults"
+AC_DEFAULTS="${SCRIPT_DIR}/../../agent-swarm/.push-defaults"
 
-if [[ ! -f "$DEFAULTS_FILE" ]]; then
-    echo "Error: .push-defaults not found. Run a build target first." >&2
+NAMESPACE=""
+[[ -f "$LOCAL_DEFAULTS" ]] && NAMESPACE=$(grep '^NAMESPACE=' "$LOCAL_DEFAULTS" | cut -d= -f2- || true)
+[[ -z "$NAMESPACE" && -f "$AC_DEFAULTS" ]] && NAMESPACE=$(grep '^NAMESPACE=' "$AC_DEFAULTS" | cut -d= -f2- || true)
+if [[ -z "$NAMESPACE" && ! -f "$LOCAL_DEFAULTS" && ! -f "$AC_DEFAULTS" ]]; then
+    echo "Error: no .push-defaults found. Run a build target first." >&2
     exit 1
 fi
-
-NAMESPACE=$(grep '^NAMESPACE=' "$DEFAULTS_FILE" | cut -d= -f2- || true)
 
 NS_FLAG=()
 [[ -n "$NAMESPACE" ]] && NS_FLAG=(-n "$NAMESPACE")

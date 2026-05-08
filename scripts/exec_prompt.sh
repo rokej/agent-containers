@@ -4,14 +4,25 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEFAULTS_FILE="${SCRIPT_DIR}/../.push-defaults"
-
-if [[ ! -f "$DEFAULTS_FILE" ]]; then
-    echo "Error: .push-defaults not found. Run a build target first." >&2
+LOCAL_DEFAULTS="${SCRIPT_DIR}/../.push-defaults"
+AC_DEFAULTS="${SCRIPT_DIR}/../../agent-swarm/.push-defaults"
+if [[ -f "$AC_DEFAULTS" ]]; then
+    DEFAULTS_FILE="$AC_DEFAULTS"
+else
+    DEFAULTS_FILE="$LOCAL_DEFAULTS"
+fi
+if [[ ! -f "$DEFAULTS_FILE" && ! -f "$LOCAL_DEFAULTS" ]]; then
+    echo "Error: no .push-defaults found. Run a build target first." >&2
     exit 1
 fi
 
-_get() { grep "^${1}=" "$DEFAULTS_FILE" | cut -d= -f2- || true; }
+_get() {
+    local val=""
+    [[ -f "$DEFAULTS_FILE" ]] && val=$(grep "^${1}=" "$DEFAULTS_FILE" | cut -d= -f2- || true)
+    [[ -z "$val" && -f "$LOCAL_DEFAULTS" && "$LOCAL_DEFAULTS" != "$DEFAULTS_FILE" ]] && \
+        val=$(grep "^${1}=" "$LOCAL_DEFAULTS" | cut -d= -f2- || true)
+    echo "$val"
+}
 
 REGISTRY=$(              _get REGISTRY)
 IMAGE_TAG=$(             _get IMAGE_TAG); IMAGE_TAG="${IMAGE_TAG:-latest}"

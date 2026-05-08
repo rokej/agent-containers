@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
-# build.sh — prompt for registry/image_tag, build, save defaults
+# build.sh — build a container image, optionally prompting for registry/tag
 # Usage: build.sh <image-name> <containerfile>
+# Set NOPROMPT=1 to skip interactive prompts and use saved defaults.
 set -euo pipefail
 
-IMAGE_NAME="$1"    # e.g. opencode
-CONTAINERFILE="$2" # e.g. containerfiles/Containerfile.opencode
+IMAGE_NAME="$1"
+CONTAINERFILE="$2"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="${SCRIPT_DIR}/.."
-DEFAULTS_FILE="${REPO_ROOT}/.push-defaults"
+AC_DEFAULTS="${REPO_ROOT}/../agent-swarm/.push-defaults"
+if [[ -f "$AC_DEFAULTS" ]]; then
+    DEFAULTS_FILE="$AC_DEFAULTS"
+else
+    DEFAULTS_FILE="${REPO_ROOT}/.push-defaults"
+fi
 
-# Load saved defaults
 SAVED_REGISTRY=""
 SAVED_IMAGE_TAG="latest"
 if [[ -f "$DEFAULTS_FILE" ]]; then
@@ -22,24 +27,28 @@ fi
 echo ""
 echo "=== Build: ${IMAGE_NAME} ==="
 
-if [[ -n "$SAVED_REGISTRY" ]]; then
-    read -rp "Registry  [${SAVED_REGISTRY}]: " REGISTRY
+if [[ "${NOPROMPT:-}" == "1" ]]; then
+    REGISTRY="$SAVED_REGISTRY"
+    IMAGE_TAG="$SAVED_IMAGE_TAG"
 else
-    read -rp "Registry: " REGISTRY
+    if [[ -n "$SAVED_REGISTRY" ]]; then
+        read -rp "Registry  [${SAVED_REGISTRY}]: " REGISTRY
+    else
+        read -rp "Registry: " REGISTRY
+    fi
+    REGISTRY="${REGISTRY:-$SAVED_REGISTRY}"
+    read -rp "IMAGE_TAG [${SAVED_IMAGE_TAG}]: " IMAGE_TAG
+    IMAGE_TAG="${IMAGE_TAG:-$SAVED_IMAGE_TAG}"
 fi
-REGISTRY="${REGISTRY:-$SAVED_REGISTRY}"
 
 if [[ -z "$REGISTRY" ]]; then
     echo "Error: registry cannot be empty." >&2
     exit 1
 fi
 
-read -rp "IMAGE_TAG [${SAVED_IMAGE_TAG}]: " IMAGE_TAG
-IMAGE_TAG="${IMAGE_TAG:-$SAVED_IMAGE_TAG}"
-
 FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
 
-# Persist defaults before building (preserve IMAGE_PULL_SECRET and NAMESPACE if set)
+# Persist REGISTRY + IMAGE_TAG to defaults file
 {
     grep -v '^REGISTRY=' "$DEFAULTS_FILE" 2>/dev/null \
         | grep -v '^IMAGE_TAG=' || true
@@ -59,10 +68,11 @@ podman build \
   --build-arg PYTHON_BUILD="${PYTHON_BUILD:-20260414}" \
   --build-arg FZF_VERSION="${FZF_VERSION:-0.72.0}" \
   --build-arg RG_VERSION="${RG_VERSION:-15.1.0}" \
+  --build-arg JIRA_MCP_VERSION="${JIRA_MCP_VERSION:-0.1.0}" \
   --target "${IMAGE_NAME}" \
   -t "${FULL_IMAGE}" \
   "${REPO_ROOT}"
 
 echo ""
 echo "Built:   ${FULL_IMAGE}"
-echo "Defaults saved to .push-defaults"
+echo "Defaults saved to ${DEFAULTS_FILE}"
