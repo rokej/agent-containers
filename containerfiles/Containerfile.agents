@@ -26,7 +26,7 @@ RUN groupadd -g 1000 node && useradd -u 1000 -g node -m -s /bin/bash node
 RUN groupadd sandbox && useradd -g sandbox -m -s /bin/bash sandbox
 
 RUN dnf install -y \
-    git curl ca-certificates zsh vim-minimal nano less jq openssh-clients sudo \
+    git curl ca-certificates zsh vim-minimal nano less jq openssh-clients sudo openssl \
     && dnf clean all \
     && echo "node ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/node \
     && chmod 0440 /etc/sudoers.d/node
@@ -128,31 +128,20 @@ RUN /usr/local/go/bin/go install golang.org/x/tools/gopls@v${GOPLS_VERSION}
 ENV PATH=$PATH:/home/node/go/bin
 RUN python3 -m pip install --no-cache-dir pyright==${PYRIGHT_VERSION}
 
+# GitHub App auth — transparent gh/git when credentials are mounted at runtime.
+# Upstream: server-foundation-agent/build/scripts (kubeopencode/devbox pattern).
+# Mount /etc/github-app/{client_id,installation_id,private_key} or set GH_APP_* env.
+COPY --chmod=755 scripts/github-app/github-app-iat.sh /usr/local/bin/
+COPY --chmod=755 scripts/github-app/github-token-manager.sh /usr/local/bin/
+COPY --chmod=755 scripts/github-app/gh-wrapper.sh /usr/local/bin/
+COPY --chmod=755 scripts/github-app/git-credential-github-app.sh /usr/local/bin/
+RUN mv /usr/local/bin/gh /usr/bin/gh-real \
+    && ln -sf /usr/local/bin/gh-wrapper.sh /usr/local/bin/gh \
+    && git config --system credential.helper /usr/local/bin/git-credential-github-app.sh
+
 USER node
 
-# ---- Stage 3a: OpenCode agent ----
-FROM base-runtimes AS opencode
-ARG OPENCODE_VERSION
-
-USER node
-RUN npm install -g opencode-ai@${OPENCODE_VERSION} --ignore-scripts && \
-    OC_DIR=/usr/local/share/npm-global/lib/node_modules/opencode-ai && \
-    cd "$OC_DIR" && npm install --ignore-scripts opencode-linux-x64@${OPENCODE_VERSION} && \
-    mkdir -p "$OC_DIR/bin" && \
-    cp "$OC_DIR/node_modules/opencode-linux-x64/bin/opencode" "$OC_DIR/bin/opencode.exe" && \
-    chmod 755 "$OC_DIR/bin/opencode.exe" && \
-    npm cache clean --force
-
-# Provider config: restrict to Claude (Vertex) and Gemini only.
-# Credentials are injected at runtime via K8s/Podman secrets.
-COPY --chown=sandbox:sandbox containerfiles/opencode.json /sandbox/opencode.json
-
-# GCP credentials path for Claude via Vertex AI — value injected at runtime
-ENV GOOGLE_APPLICATION_CREDENTIALS=/app/gcloud/credentials.json
-
-CMD ["opencode"]
-
-# ---- Stage 3b: Crush agent ----
+# ---- Stage 3a: Crush agent ----
 FROM base-runtimes AS crush
 ARG CRUSH_VERSION
 
@@ -188,3 +177,24 @@ ENV CRUSH_DISABLE_METRICS=1
 ENV DO_NOT_TRACK=1
 
 CMD ["crush"]
+
+# ---- Stage 3b: OpenCode agent (last stage — default for OpenShift builds) ----
+FROM base-runtimes AS opencode
+ARG OPENCODE_VERSION
+
+USER node
+RUN npm install -g opencode-ai@${OPENCODE_VERSION} --ignore-scripts && \
+    OC_DIR=/usr/local/share/npm-global/lib/node_modules/opencode-ai && \
+    cd "$OC_DIR" && npm install --ignore-scripts opencode-linux-x64@${OPENCODE_VERSION} && \
+    cp "$OC_DIR/node_modules/opencode-linux-x64/bin/opencode" /usr/local/share/npm-global/bin/opencode && \
+    chmod 755 /usr/local/share/npm-global/bin/opencode && \
+    npm cache clean --force
+
+# Provider config: restrict to Claude (Vertex) and Gemini only.
+# Credentials are injected at runtime via K8s/Podman secrets.
+COPY --chown=sandbox:sandbox containerfiles/opencode.json /sandbox/opencode.json
+
+# GCP credentials path for Claude via Vertex AI — value injected at runtime
+ENV GOOGLE_APPLICATION_CREDENTIALS=/app/gcloud/credentials.json
+
+CMD ["opencode"]
