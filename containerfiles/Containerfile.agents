@@ -72,9 +72,18 @@ RUN set -ex; \
       aarch64) ARCH_SHORT=arm64 ;; \
       *) echo "Unsupported arch: $ARCH_RAW" >&2 && exit 1 ;; \
     esac; \
-    curl -fsSL "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_${ARCH_SHORT}" \
-        -o /usr/local/bin/yq; \
-    chmod +x /usr/local/bin/yq; \
+    YQ_ASSET="yq_linux_${ARCH_SHORT}"; \
+    YQ_URL="https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}"; \
+    cd /tmp; \
+    curl -fsSL "${YQ_URL}/checksums" -o checksums; \
+    curl -fsSL "${YQ_URL}/checksums_hashes_order" -o checksums_hashes_order; \
+    curl -fsSL "${YQ_URL}/extract-checksum.sh" -o extract-checksum.sh; \
+    chmod +x extract-checksum.sh; \
+    ./extract-checksum.sh SHA-256 "${YQ_ASSET}" | awk '{ print $2 " " $1 }' > checksum.sha256; \
+    curl -fsSL "${YQ_URL}/${YQ_ASSET}" -o "${YQ_ASSET}"; \
+    sha256sum -c checksum.sha256; \
+    install -m 0755 "${YQ_ASSET}" /usr/local/bin/yq; \
+    rm -f checksums checksums_hashes_order extract-checksum.sh checksum.sha256 "${YQ_ASSET}"; \
     yq --version
 
 # npm global prefix under /usr/local/share, owned by the non-root "node" user
