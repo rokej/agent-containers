@@ -1,6 +1,7 @@
 ARG FZF_VERSION=0.72.0
 ARG RG_VERSION=15.1.0
 ARG GH_VERSION=2.92.0
+ARG YQ_VERSION=4.53.3
 ARG GO_VERSION=1.26.2
 ARG OPENCODE_VERSION=1.14.29
 ARG CRUSH_VERSION=0.65.3
@@ -15,6 +16,7 @@ FROM registry.access.redhat.com/ubi10/nodejs-24 AS base-tools
 ARG FZF_VERSION
 ARG RG_VERSION
 ARG GH_VERSION
+ARG YQ_VERSION
 
 # The base image ends with a non-root USER; reclaim root for setup
 USER root
@@ -62,6 +64,18 @@ RUN set -ex; \
         | tar -xz -C /usr/local/bin --strip-components=2 "gh_${GH_VERSION}_linux_${ARCH_SHORT}/bin/gh"; \
     chmod +x /usr/local/bin/gh; \
     gh --version
+
+RUN set -ex; \
+    ARCH_RAW=$(uname -m); \
+    case "$ARCH_RAW" in \
+      x86_64)  ARCH_SHORT=amd64 ;; \
+      aarch64) ARCH_SHORT=arm64 ;; \
+      *) echo "Unsupported arch: $ARCH_RAW" >&2 && exit 1 ;; \
+    esac; \
+    curl -fsSL "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_${ARCH_SHORT}" \
+        -o /usr/local/bin/yq; \
+    chmod +x /usr/local/bin/yq; \
+    yq --version
 
 # npm global prefix under /usr/local/share, owned by the non-root "node" user
 RUN mkdir -p /usr/local/share/npm-global \

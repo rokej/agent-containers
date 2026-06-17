@@ -17,6 +17,7 @@ CRUSH_VERSION    ?= 0.75.0
 GH_VERSION       ?= 2.93.0
 FZF_VERSION      ?= 0.73.1
 RG_VERSION       ?= 15.1.0
+YQ_VERSION       ?= 4.53.3
 JIRA_MCP_VERSION ?= 0.1.0
 GOPLS_VERSION    ?= 0.22.0
 PYRIGHT_VERSION  ?= 1.1.410
@@ -45,7 +46,7 @@ define IMAGE_TARGETS
 
 .PHONY: build-$(1) push-$(1) publish-$(1)
 build-$(1):
-	@GO_VERSION=$(GO_VERSION) PYTHON_VERSION=$(PYTHON_VERSION) PYTHON_BUILD=$(PYTHON_BUILD) CRUSH_VERSION=$(CRUSH_VERSION) OPENCODE_VERSION=$(OPENCODE_VERSION) JIRA_MCP_VERSION=$(JIRA_MCP_VERSION) GOPLS_VERSION=$(GOPLS_VERSION) PYRIGHT_VERSION=$(PYRIGHT_VERSION) NOPROMPT=$(NOPROMPT) bash scripts/build.sh $(1) $(CONTAINERFILE)
+	@GO_VERSION=$(GO_VERSION) PYTHON_VERSION=$(PYTHON_VERSION) PYTHON_BUILD=$(PYTHON_BUILD) CRUSH_VERSION=$(CRUSH_VERSION) OPENCODE_VERSION=$(OPENCODE_VERSION) JIRA_MCP_VERSION=$(JIRA_MCP_VERSION) GOPLS_VERSION=$(GOPLS_VERSION) PYRIGHT_VERSION=$(PYRIGHT_VERSION) YQ_VERSION=$(YQ_VERSION) NOPROMPT=$(NOPROMPT) bash scripts/build.sh $(1) $(CONTAINERFILE)
 push-$(1):
 	@bash scripts/push.sh $(1)
 publish-$(1):
@@ -105,10 +106,11 @@ update-deps:  ## Fetch latest versions of all dependencies and update Makefile
 	$(eval LATEST_GH := $(shell curl -fsSL 'https://api.github.com/repos/cli/cli/releases/latest' | jq -r '.tag_name | ltrimstr("v")'))
 	$(eval LATEST_FZF := $(shell curl -fsSL 'https://api.github.com/repos/junegunn/fzf/releases/latest' | jq -r '.tag_name | ltrimstr("v")'))
 	$(eval LATEST_RG := $(shell curl -fsSL 'https://api.github.com/repos/BurntSushi/ripgrep/releases/latest' | jq -r '.tag_name'))
+	$(eval LATEST_YQ := $(shell curl -fsSL 'https://api.github.com/repos/mikefarah/yq/releases/latest' | jq -r '.tag_name | ltrimstr("v")'))
 	$(eval LATEST_JIRA_MCP := $(shell curl -fsSL 'https://api.github.com/repos/stolostron/jira-mcp-server/releases/latest' | jq -r '.tag_name | ltrimstr("v")'))
 	$(eval LATEST_GOPLS := $(shell curl -fsSL 'https://api.github.com/repos/golang/tools/releases' | jq -r '[.[] | select(.tag_name | startswith("gopls/"))][0].tag_name | ltrimstr("gopls/v")'))
 	$(eval LATEST_PYRIGHT := $(shell curl -fsSL 'https://pypi.org/pypi/pyright/json' | jq -r '.info.version'))
-	@echo "Go: $(LATEST_GO)  Python: $(LATEST_PY) (build: $(LATEST_BUILD))  opencode: $(LATEST_OC)  crush: $(LATEST_CRUSH)  gh: $(LATEST_GH)  fzf: $(LATEST_FZF)  rg: $(LATEST_RG)  jira-mcp: $(LATEST_JIRA_MCP)  gopls: $(LATEST_GOPLS)  pyright: $(LATEST_PYRIGHT)"
+	@echo "Go: $(LATEST_GO)  Python: $(LATEST_PY) (build: $(LATEST_BUILD))  opencode: $(LATEST_OC)  crush: $(LATEST_CRUSH)  gh: $(LATEST_GH)  fzf: $(LATEST_FZF)  rg: $(LATEST_RG)  yq: $(LATEST_YQ)  jira-mcp: $(LATEST_JIRA_MCP)  gopls: $(LATEST_GOPLS)  pyright: $(LATEST_PYRIGHT)"
 	@sed -i 's/^GO_VERSION\s*?= .*/GO_VERSION       ?= $(LATEST_GO)/' Makefile
 	@sed -i 's/^PYTHON_VERSION\s*?= .*/PYTHON_VERSION   ?= $(LATEST_PY)/' Makefile
 	@sed -i 's/^PYTHON_BUILD\s*?= .*/PYTHON_BUILD     ?= $(LATEST_BUILD)/' Makefile
@@ -117,6 +119,7 @@ update-deps:  ## Fetch latest versions of all dependencies and update Makefile
 	@sed -i 's/^GH_VERSION\s*?= .*/GH_VERSION       ?= $(LATEST_GH)/' Makefile
 	@sed -i 's/^FZF_VERSION\s*?= .*/FZF_VERSION      ?= $(LATEST_FZF)/' Makefile
 	@sed -i 's/^RG_VERSION\s*?= .*/RG_VERSION       ?= $(LATEST_RG)/' Makefile
+	@sed -i 's/^YQ_VERSION\s*?= .*/YQ_VERSION       ?= $(LATEST_YQ)/' Makefile
 	@sed -i 's/^JIRA_MCP_VERSION\s*?= .*/JIRA_MCP_VERSION ?= $(LATEST_JIRA_MCP)/' Makefile
 	@sed -i 's/^GOPLS_VERSION\s*?= .*/GOPLS_VERSION    ?= $(LATEST_GOPLS)/' Makefile
 	@sed -i 's/^PYRIGHT_VERSION\s*?= .*/PYRIGHT_VERSION  ?= $(LATEST_PYRIGHT)/' Makefile
